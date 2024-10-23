@@ -1,0 +1,183 @@
+---
+title: "ISU Forestry Event Analysis"
+author: "Julia Baker, MSc and Justinian Wurtzel, MSc"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Separate lists for counties, latitudes, and longitudes
+county <- c("Adair", "Adams", "Allamakee", "Appanoose", "Audubon", "Benton", "Black Hawk", "Boone",
+                  "Bremer", "Buchanan", "Buena Vista", "Butler", "Calhoun", "Carroll", "Cass", "Cedar",
+                  "Cerro Gordo", "Cherokee", "Chickasaw", "Clarke", "Clay", "Clayton", "Clinton", "Crawford",
+                  "Dallas", "Davis", "Decatur", "Delaware", "Des Moines", "Dickinson", "Dubuque", "Emmet",
+                  "Fayette", "Floyd", "Franklin", "Fremont", "Greene", "Grundy", "Guthrie", "Hamilton",
+                  "Hancock", "Hardin", "Harrison", "Henry", "Howard", "Humboldt", "Ida", "Iowa", "Jackson",
+                  "Jasper", "Jefferson", "Johnson", "Jones", "Keokuk", "Kossuth", "Lee", "Linn", "Louisa",
+                  "Lucas", "Lyon", "Madison", "Mahaska", "Marion", "Marshall", "Mills", "Mitchell",
+                  "Monona", "Monroe", "Montgomery", "Muscatine", "O'Brien", "Osceola", "Page", "Palo Alto",
+                  "Plymouth", "Pocahontas", "Polk", "Pottawattamie", "Poweshiek", "Ringgold", "Sac", "Scott",
+                  "Shelby", "Sioux", "Story", "Tama", "Taylor", "Union", "Van Buren", "Wapello", "Warren",
+                  "Washington", "Wayne", "Webster", "Winnebago", "Winneshiek", "Woodbury", "Worth", "Wright")
+
+latitudes <- c(41.3306, 41.0279, 43.2713, 40.7383, 41.8367, 42.0833, 42.4693, 42.0364,
+               42.7650, 42.4701, 42.7366, 42.7442, 42.3961, 42.0362, 41.3349, 41.7327,
+               43.0818, 42.7530, 43.0494, 41.0293, 43.0826, 42.9023, 41.8976, 42.0360,
+               41.6854, 40.7459, 40.7389, 42.4690, 40.9123, 43.3989, 42.5066, 43.2556,
+               42.8622, 42.9311, 42.7316, 40.7345, 42.0378, 42.4181, 41.6841, 42.3727,
+               43.0852, 42.3841, 41.5593, 40.9881, 43.3653, 42.7633, 42.2621, 41.6638, 42.1567,
+               41.6973, 41.3327, 41.6727, 41.6714, 42.1154, 40.7850, 42.5357, 41.2281, 41.5714,
+               40.9912, 43.4239, 41.3304, 41.2949, 41.3204, 42.0426, 41.0207, 42.0146,
+               42.0508, 41.8751, 41.0493, 41.4226, 43.4036, 43.4655, 40.7422, 42.9048,
+               43.1950, 41.5650, 41.4089, 42.0376, 41.3996, 42.0083, 41.8988, 41.6973,
+               41.4115, 41.2130, 41.3625, 41.6756, 41.3094, 42.3311, 43.3685, 43.2447,
+               42.3554, 43.3175, 41.4835, 42.9066, 43.3739, 42.5301, 42.0494, 41.9945, 41.8625)
+
+longitudes <- c(-94.4719, -94.6961, -91.3829, -92.9473, -94.9294, -92.0660, -92.3813, -93.8878,
+                -92.2976, -91.8319, -95.1432, -93.0746, -94.6346, -94.8670, -94.9316, -91.1275,
+                -93.2628, -95.5444, -92.3171, -93.7860, -95.1514, -91.2853, -90.5325, -95.3245,
+                -94.0301, -92.4075, -93.7229, -91.3446, -91.1532, -95.1300, -90.8733, -94.6832,
+                -91.7533, -92.7821, -93.2254, -95.7953, -94.2353, -92.7890, -94.4716, -93.7205,
+                -93.7445, -93.2265, -95.8136, -91.5468, -91.5631, -94.1791, -94.8203, -91.8154, -91.0730,
+                -93.1282, -92.8674, -91.8794, -91.5302, -91.5857, -92.0648, -94.2330, -91.6215,
+                -90.5667, -92.3023, -94.3666, -92.3921, -92.6407, -92.9346, -92.6692, -94.6590,
+                -95.9845, -93.6196, -95.2568, -92.4242, -94.7325, -95.4374, -94.9794, -92.3071,
+                -95.9227, -94.8663, -93.6474, -95.4868, -92.5271, -94.2400, -95.1683, -92.6077,
+                -95.2707, -94.6964, -92.8473, -92.5867, -94.2441, -93.3220, -92.6337, -91.6547,
+                -92.0737, -94.2937, -93.2202, -94.6293, -93.7023, -93.4940, -91.4068, -91.8215, -93.3036, -93.7261)
+
+
+# Create a county dataframe with latitudes and longitudes
+countydf <- data.frame(County = county, Latitude = latitudes, Longitude = longitudes)
+
+# Step 1: Create the 200 unique patients, each assigned to one county
+n_patients <- 200  # Number of unique patients
+unique_ids <- 1:n_patients  # Unique IDs from 1 to 200
+
+# Assign each patient to exactly one county (with replacement because there are only 99 counties)
+patient_county_mapping <- data.frame(
+  UniqueID = unique_ids,  # Unique IDs
+  County = sample(county, size = n_patients, replace = TRUE)  # Assign each unique ID to one county
+)
+
+# Step 2: Define the five events and fixed event dates
+events <- c("Event01", "Event02", "Event03", "Event04", "Event05")
+fixed_event_dates <- c("2023-02-10", "2023-04-15", "2023-06-20", "2023-08-25", "2023-10-30")  # Fixed dates for each event
+
+# Step 3: Create multiple rows per patient for each event they attend
+set.seed(123)  # Optional: Set seed for reproducibility
+
+# Generate the patient-event mapping
+patients_attending_events <- do.call(rbind, lapply(1:n_patients, function(i) {
+  n_events_attended <- sample(1:5, 1)  # Random number of events a patient attends (1 to 5)
+  events_attended <- sample(events, n_events_attended, replace = FALSE)  # Random events attended by this patient
+  
+  # Assign fixed event dates corresponding to each event
+  event_dates <- sapply(events_attended, function(event) fixed_event_dates[match(event, events)])
+  
+  data.frame(
+    UniqueID = rep(patient_county_mapping$UniqueID[i], n_events_attended),
+    County = rep(patient_county_mapping$County[i], n_events_attended),
+    Event = events_attended,
+    EventDate = event_dates  # Use the fixed event dates
+  )
+}))
+
+# Display the first few rows of the resulting dataframe
+head(patients_attending_events)
+
+```
+
+Attendance Counts
+```{r}
+# Count the number of events each patient attended
+attendance_counts <- table(patients_attending_events$UniqueID)
+# Distribution of attendance
+table(attendance_counts)
+```
+
+County Representation
+```{r}
+# Count the number of patients from each county attending events
+county_representation <- table(patients_attending_events$County)
+# View the counties with the highest representation
+head(sort(county_representation, decreasing = TRUE))
+
+```
+
+Event Participation
+```{r}
+# Count the number of participants per event
+event_participation <- table(patients_attending_events$Event)
+# View the events with the most and least participation
+sort(event_participation, decreasing = TRUE)
+```
+
+Event Overlap
+```{r}
+# Create a matrix of event attendance for each patient
+attendance_matrix <- table(patients_attending_events$UniqueID, patients_attending_events$Event)
+# Check overlaps between events (cross-tabulation)
+cross_tab <- table(patients_attending_events$Event, patients_attending_events$UniqueID)
+```
+
+```{r}
+# Count event participation by county
+county_event_participation <- table(patients_attending_events$County, patients_attending_events$Event)
+# Display the participation matrix
+county_event_participation
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(factoextra)
+
+# Plot event participation over time
+ggplot(patients_attending_events, aes(x = as.Date(EventDate), fill = Event)) +
+  geom_histogram(binwidth = 10) +
+  labs(title = "Event Attendance Over Time", x = "Date", y = "Number of Participants")
+
+# Create the county_event_participation matrix
+county_participation <- table(patients_attending_events$County, patients_attending_events$Event)
+
+# Convert the table to a numeric matrix (replace NA values with 0)
+county_participation_matrix <- as.matrix(county_participation)
+county_participation_matrix[is.na(county_participation_matrix)] <- 0  # Handle any NAs by replacing them with 0
+
+# Add latitude and longitude to the participation matrix for more variability
+county_participation_matrix <- cbind(
+  county_participation_matrix,
+  Latitude = countydf$Latitude[match(rownames(county_participation_matrix), countydf$County)],
+  Longitude = countydf$Longitude[match(rownames(county_participation_matrix), countydf$County)]
+)
+
+# Perform k-means clustering with 3 clusters (you can adjust the number of centers if needed)
+set.seed(123)  # Optional: Set seed for reproducibility
+kmeans_result <- kmeans(county_participation_matrix, centers = 3)
+
+# Print the k-means clustering result
+print(kmeans_result)
+
+# Visualize k-means clustering results
+fviz_cluster(kmeans_result, data = county_participation_matrix, 
+             geom = "point", ellipse.type = "convex", 
+             main = "K-Means Clustering of County Participation and Geographic Data")
+
+```
+
+
+```{r}
+# Summarize event popularity by region (assuming you have a region variable)
+event_by_region <- aggregate(UniqueID ~ County + Event, data = patients_attending_events, FUN = length)
+```
+
+```{r}
+# Build a logistic regression model to predict event attendance
+attendance_model <- glm(as.factor(Event) ~ County, data = patients_attending_events, family = "binomial")
+summary(attendance_model)
+```
+
+
